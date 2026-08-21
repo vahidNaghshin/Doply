@@ -37,6 +37,7 @@ enum DoplyTab: String, CaseIterable, Identifiable {
 struct RootView: View {
     @StateObject private var store = DoplyStore()
     @StateObject private var toast = ToastCenter()
+    @StateObject private var gardenStore = GardenStore()
     @State private var tab: DoplyTab = .home
 
     var body: some View {
@@ -46,7 +47,7 @@ struct RootView: View {
             // Screens — each keeps its own scroll position.
             Group {
                 switch tab {
-                case .home:    HomeScreen()
+                case .home:    HomeScreen(tab: $tab)
                 case .quests:  QuestsScreen()
                 case .shop:    ShopScreen()
                 case .friends: FriendsScreen()
@@ -66,6 +67,7 @@ struct RootView: View {
         }
         .environmentObject(store)
         .environmentObject(toast)
+        .environmentObject(gardenStore)
     }
 }
 

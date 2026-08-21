@@ -48,8 +48,8 @@ struct ShopScreen: View {
             // Grid
             LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(filtered) { item in
-                    ShopItemCard(item: item) {
-                        toast.show(item.toast)
+                    ShopItemCard(item: item, isOwned: store.owns(item)) {
+                        toast.show(store.purchase(item))
                     }
                 }
             }
@@ -82,6 +82,7 @@ private struct CategoryChip: View {
 
 private struct ShopItemCard: View {
     let item: ShopItem
+    let isOwned: Bool
     let onBuy: () -> Void
 
     var body: some View {
@@ -97,16 +98,26 @@ private struct ShopItemCard: View {
                 .font(DoplyFont.body(12.5, .bold))
                 .foregroundStyle(DoplyColor.coin)
 
-            Button(action: onBuy) {
-                Text("Buy")
+            if isOwned {
+                Text("Owned ✓")
                     .font(DoplyFont.body(12.5, .heavy))
                     .foregroundStyle(DoplyColor.greenDark)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 9)
                     .background(DoplyColor.greenSoft, in: Capsule())
+                    .padding(.top, 4)
+            } else {
+                Button(action: onBuy) {
+                    Text("Buy")
+                        .font(DoplyFont.body(12.5, .heavy))
+                        .foregroundStyle(DoplyColor.greenDark)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
+                        .background(DoplyColor.greenSoft, in: Capsule())
+                }
+                .buttonStyle(PressScaleStyle(scale: 0.95))
+                .padding(.top, 4)
             }
-            .buttonStyle(PressScaleStyle(scale: 0.95))
-            .padding(.top, 4)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 10)
@@ -115,6 +126,7 @@ private struct ShopItemCard: View {
         .shadowSm()
     }
 }
+
 
 #Preview {
     ShopScreen()

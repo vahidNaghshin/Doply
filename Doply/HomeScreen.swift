@@ -1,18 +1,32 @@
 import SwiftUI
 
+/// The single full-screen presentation currently active from Home. Using one
+/// enum-driven `.fullScreenCover(item:)` (instead of stacking multiple
+/// `.fullScreenCover(isPresented:)` modifiers on the same view) avoids a known
+/// SwiftUI conflict where dismissing one of several stacked covers can silently
+/// fail to close.
+private enum HomeCover: Identifiable {
+    case walkSession
+    case garden
+
+    var id: Self { self }
+}
+
 struct HomeScreen: View {
     @EnvironmentObject private var store: DoplyStore
     @EnvironmentObject private var toast: ToastCenter
-    @State private var showWalkSession = false
+    @EnvironmentObject private var gardenStore: GardenStore
+    @Binding var tab: DoplyTab
+    @State private var activeCover: HomeCover?
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
-                HomeSkyHeader()
+                HomeSkyHeader(onGardenBoost: { activeCover = .garden })
 
                 VStack(spacing: 0) {
                     ProgressCard().padding(.top, 16)
-                    StartMovingButton { showWalkSession = true }.padding(.top, 16)
+                    StartMovingButton { activeCover = .walkSession }.padding(.top, 16)
                     UpcomingMissionCard().padding(.top, 14)
                 }
                 .padding(.horizontal, 18)
@@ -21,8 +35,20 @@ struct HomeScreen: View {
         }
         .background(DoplyColor.cream)
         .ignoresSafeArea(edges: .top)
-        .fullScreenCover(isPresented: $showWalkSession) {
-            WalkSessionView()
+        .fullScreenCover(item: $activeCover) { cover in
+            switch cover {
+            case .walkSession:
+                WalkSessionView()
+            case .garden:
+                GardenScreen(
+                    onClose: { activeCover = nil },
+                    onGoToShop: {
+                        activeCover = nil
+                        tab = .shop
+                    }
+                )
+                .environmentObject(gardenStore)
+            }
         }
     }
 }
@@ -30,6 +56,8 @@ struct HomeScreen: View {
 // MARK: - Sky header (greeting + balances + garden)
 
 private struct HomeSkyHeader: View {
+    let onGardenBoost: () -> Void
+
     var body: some View {
         VStack(spacing: 14) {
             HStack(alignment: .top, spacing: 10) {
@@ -47,7 +75,7 @@ private struct HomeSkyHeader: View {
             .padding(.horizontal, 18)
             .padding(.top, 56)   // status-bar / notch clearance
 
-            GardenHero()
+            GardenHero(onGardenBoost: onGardenBoost)
         }
         .background(
             LinearGradient(
@@ -119,6 +147,9 @@ private struct BalanceCard: View {
 // MARK: - Garden illustration
 
 private struct GardenHero: View {
+    @EnvironmentObject private var toast: ToastCenter
+    let onGardenBoost: () -> Void
+
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width
@@ -129,9 +160,19 @@ private struct GardenHero: View {
                     .frame(width: w, height: 260 * s)
 
                 HStack {
-                    HeroFab(icon: "📷", label: "Snapshot")
+                    Button {
+                        toast.show("Garden snapshot saved! 📷")
+                    } label: {
+                        HeroFab(icon: "📷", label: "Snapshot")
+                    }
+                    .buttonStyle(PressScaleStyle())
+
                     Spacer()
-                    HeroFab(icon: "🌱", label: "Garden Boost")
+
+                    Button(action: onGardenBoost) {
+                        HeroFab(icon: "🌱", label: "Garden Boost")
+                    }
+                    .buttonStyle(PressScaleStyle())
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 14)
@@ -265,7 +306,7 @@ private struct GardenCanvas: View {
 
 // MARK: Garden sub-shapes
 
-private struct CloudShape: Shape {
+struct CloudShape: Shape {
     func path(in r: CGRect) -> Path {
         var p = Path()
         p.addEllipse(in: CGRect(x: 0, y: r.height * 0.35,
@@ -276,7 +317,7 @@ private struct CloudShape: Shape {
     }
 }
 
-private struct HillShape: Shape {
+struct HillShape: Shape {
     let controlSet: Int   // 0 = back, 1 = mid, 2 = front
 
     func path(in r: CGRect) -> Path {
@@ -306,7 +347,7 @@ private struct HillShape: Shape {
     }
 }
 
-private struct StreamShape: Shape {
+struct StreamShape: Shape {
     func path(in r: CGRect) -> Path {
         let sx = r.width / 400, sy = r.height / 260
         func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x * sx, y: y * sy) }
@@ -319,7 +360,7 @@ private struct StreamShape: Shape {
     }
 }
 
-private struct FenceView: View {
+struct FenceView: View {
     let scale: CGFloat
 
     var body: some View {
@@ -341,7 +382,7 @@ private struct FenceView: View {
     }
 }
 
-private struct TreeView: View {
+struct TreeView: View {
     let scale: CGFloat
     let x: CGFloat
     let groundY: CGFloat
@@ -374,7 +415,7 @@ private struct TreeView: View {
     }
 }
 
-private struct CottageView: View {
+struct CottageView: View {
     let scale: CGFloat
 
     var body: some View {

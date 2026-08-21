@@ -93,9 +93,37 @@ final class DoplyStore: ObservableObject {
     @Published var level = 12
     @Published var xp: Double = 0.82
 
+    // Inventory
+    @Published var ownedItemIDs: Set<UUID> = []
+
     var stepProgress: Double { min(1, Double(steps) / Double(stepGoal)) }
     var stepsRemaining: Int { max(0, stepGoal - steps) }
     var stepPercent: Int { Int((stepProgress * 100).rounded()) }
+
+    /// Whether the player already owns this shop item.
+    func owns(_ item: ShopItem) -> Bool {
+        ownedItemIDs.contains(item.id)
+    }
+
+    /// Whether the player has enough coins to buy this item.
+    func canAfford(_ item: ShopItem) -> Bool {
+        coins >= item.price
+    }
+
+    /// Attempts to purchase an item, deducting coins and granting ownership.
+    /// Returns a toast-friendly message describing the outcome.
+    @discardableResult
+    func purchase(_ item: ShopItem) -> String {
+        if owns(item) {
+            return "You already own \(item.name) 🌿"
+        }
+        guard canAfford(item) else {
+            return "Not enough coins for \(item.name) 🪙"
+        }
+        coins -= item.price
+        ownedItemIDs.insert(item.id)
+        return item.toast
+    }
 
     // MARK: Content
 
